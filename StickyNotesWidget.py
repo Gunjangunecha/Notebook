@@ -1,103 +1,89 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, Text, messagebox
+import os
+from datetime import datetime
 
-class NotePad:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Python NotePad")
-        self.root.geometry("800x600")
+class Notepad:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Untitled - Notepad")
+        self.file_path = None
 
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill='both', expand=True)
+        self.notebook = ttk.Notebook(self.master)
+        self.notebook.pack(expand=True, fill='both')
 
-        self.create_header()
-        self.create_text_area()
+        self.create_menu()
 
-        self.current_file = None
-        self.is_locked = False
+        self.time_date_label = tk.Label(self.master, text="", anchor="e", padx=10)
+        self.time_date_label.pack(side="top", fill="x")
 
-    def create_header(self):
-        self.header_frame = ttk.Frame(self.root)
-        self.header_frame.pack(side="top", fill="x", padx=5, pady=2)
+        self.update_time_date()
+        self.master.after(1000, self.update_time_date)
 
-        ttk.Button(self.header_frame, text="New", command=self.new_file).pack(side="left", padx=5)
-        ttk.Button(self.header_frame, text="Open", command=self.open_file).pack(side="left", padx=5)
-        ttk.Button(self.header_frame, text="Save", command=self.save_file).pack(side="left", padx=5)
-        ttk.Button(self.header_frame, text="Lock", command=self.lock_file).pack(side="left", padx=5)
-        ttk.Button(self.header_frame, text="Insert Picture", command=self.insert_picture).pack(side="left", padx=5)
-        ttk.Button(self.header_frame, text="Calculator", command=self.open_calculator).pack(side="left", padx=5)
-        ttk.Button(self.header_frame, text="Close Tab", command=self.close_current_tab).pack(side="left", padx=5)
+    def create_menu(self):
+        menu_bar = tk.Menu(self.master)
+        self.master.config(menu=menu_bar)
 
-    def create_text_area(self):
-        self.text_area = tk.Text(self.root, wrap='word')
-        self.text_area.pack(expand=True, fill='both')
+        menu_bar.add_command(label="New", command=self.new_file)
+        menu_bar.add_command(label="Open", command=self.open_file)
+        menu_bar.add_command(label="Save", command=self.save_file)
+        menu_bar.add_separator()
+        menu_bar.add_command(label="Exit", command=self.quit_application)
+
+    def update_time_date(self):
+        now = datetime.now()
+        formatted_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
+        self.time_date_label.config(text=formatted_datetime)
 
     def new_file(self):
-        new_frame = ttk.Frame(self.notebook)
-        new_frame.pack(fill='both', expand=True)
-
-        new_text = tk.Text(new_frame, wrap='word')
-        new_text.pack(expand=True, fill='both')
-
-        self.notebook.add(new_frame, text="New File")
+        # Implement logic for creating a new file
+        tab = NotepadTab(self.notebook)
+        self.notebook.add(tab, text="Untitled")
+        self.notebook.select(tab)
 
     def open_file(self):
-        pass
+        file_path = filedialog.askopenfilename(defaultextension=".txt", filetypes=[("All Files", "*.*"), ("Text Documents", "*.txt")])
+
+        if file_path:
+            self.file_path = file_path
+            self.master.title(os.path.basename(self.file_path) + " - Notepad")
+            self.notebook.delete(1.0, tk.END)
+
+            try:
+                with open(self.file_path, "r") as file:
+                    self.notebook.insert(1.0, file.read())
+            except FileNotFoundError as e:
+                messagebox.showerror("Error", str(e))
 
     def save_file(self):
-        pass
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("All Files", "*.*"), ("Text Documents", "*.txt")])
 
-    def lock_file(self):
-        pass
+        if file_path:
+            self.file_path = file_path
+            self.master.title(os.path.basename(self.file_path) + " - Notepad")
 
-    def insert_picture(self):
-        pass
+            try:
+                with open(self.file_path, "w") as file:
+                    file.write(self.notebook.get(1.0, tk.END))
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
 
-    def open_calculator(self):
-        calculator_frame = ttk.Frame(self.notebook)
-        calculator_frame.pack(fill='both', expand=True)
+    def quit_application(self):
+        self.master.destroy()
 
-        calculator_label = ttk.Label(calculator_frame, text="Calculator")
-        calculator_label.pack()
+class NotepadTab(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.notepad = Text(self, wrap='word')
+        self.notepad.pack(expand=True, fill='both')
 
-        self.calculator_entry = ttk.Entry(calculator_frame)
-        self.calculator_entry.pack()
+        self.close_button = tk.Button(self, text="Close", command=self.close)
+        self.close_button.pack(side="right")
 
-        button_frame = ttk.Frame(calculator_frame)
-        button_frame.pack()
-
-        operations = ['+', '-', '*', '/', '%']
-
-        for operation in operations:
-            ttk.Button(button_frame, text=operation, command=lambda op=operation: self.append_operation(op)).pack(side='left', padx=5)
-
-        ttk.Button(button_frame, text="=", command=self.calculate_result).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Clear", command=self.clear_entry).pack(side='left', padx=5)
-
-        self.notebook.add(calculator_frame, text="Calculator")
-
-    def append_operation(self, operation):
-        self.calculator_entry.insert(tk.END, operation)
-
-    def calculate_result(self):
-        try:
-            expression = self.calculator_entry.get()
-            result = eval(expression)
-            self.calculator_entry.delete(0, tk.END)
-            self.calculator_entry.insert(0, str(result))
-        except Exception as e:
-            self.calculator_entry.delete(0, tk.END)
-            self.calculator_entry.insert(0, "Error")
-
-    def clear_entry(self):
-        self.calculator_entry.delete(0, tk.END)
-
-    def close_current_tab(self):
-        selected_tab = self.notebook.select()
-        if selected_tab:
-            self.notebook.forget(selected_tab)
+    def close(self):
+        self.master.forget(self)
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = NotePad(root)
+    notepad = Notepad(root)
     root.mainloop()
